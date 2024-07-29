@@ -10,6 +10,7 @@ The screen itself is the DMT48320C035_06WT the USB cable plugs stright into the 
 ![IMG_2467](https://github.com/user-attachments/assets/20af023c-025d-4f8d-9439-e8c7636d03a0)
 
 Writing a quick Arduio sketch on my Lolin D32 Board I am getting the following Hex strings when idle. Not sure what they mean yet. Im assuming they are the temp readings.
+Based on the spec sheet using 115200 baud and strings are hex
 #### Segment: `5AA509821041000100051654`
 - `5AA5098210410001`: Header.
 - `00051654`: Payload.
