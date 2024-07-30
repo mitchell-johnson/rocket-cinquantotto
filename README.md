@@ -23,6 +23,6 @@ Also this random payload in there
 Random set of payloads
 - 5A A5 09 | 82 10 41 00 01 00 05 16 54 
 - 5A A5 09 | 82 10 41 00 01 00 05 16 54 
-- 5A A5 09 | A2 10 53 10 A1 A4 A5 16 54 7A 
-- A5 09 | 82 12 E1 80 81 00 85 9F 54  // This might be part of the previous line
+- 5A A5 09 | A2 10 53 10 A1 A4 A5 16 54  
+- 7A A5 09 | 82 12 E1 80 81 00 85 9F 54  
 - 5A A5 09 | 82 10 41 00 01 00 05 16 54
