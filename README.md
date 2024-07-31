@@ -1,6 +1,9 @@
 # rocket-cinquantotto
 Investigation into hacking the rocket cinquantotto USB UART output to export information and control the device. The ultimate goal is to integrate the machine into homeassistant will full control.  
 
+![image](https://github.com/user-attachments/assets/718cc00b-b636-47ad-806b-d4dbc2fd8759)
+
+
 The screen itself is the DMT48320C035_06WT the USB cable plugs stright into the Rx & Tx pins in the back
 
 ![IMG_2462](https://github.com/user-attachments/assets/4b0e62d0-8b92-4025-9ef8-901fb6a586d9)
