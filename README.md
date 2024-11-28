@@ -199,7 +199,263 @@ In this series of the machine was heating up with times going . I would be expec
 
 5AA509821041000100051654 seems to be a common status message. Maybe a keep alive. 
 
+Screenshots from the programming guide 
+![Uploading image.png…]()
+![Uploading image.png…]()
+
+Certainly! Below is the Arduino code that parses the UART packets from your coffee machine's DWIN DGUS screen and prints the decoded information. This code reads incoming bytes from the serial port, assembles them into packets according to the DWIN protocol, validates the checksum, and then interprets the data.
+
+```cpp
+/*
+  Arduino code to parse DWIN DGUS UART packets and print them.
+
+  This code assumes the packets are coming in through the Serial port.
+  It reads the incoming bytes, assembles them into packets based on the headers,
+  validates the checksum, and then parses and prints the packet contents.
+
+  The code supports:
+  - Variable write commands (Command 0x82)
+  - Checksum validation according to the DWIN protocol
+*/
+
+#define BUFFER_SIZE 256  // Adjust as needed for larger packets
+
+uint8_t buffer[BUFFER_SIZE];
+uint16_t bufferIndex = 0;
+
+void setup() {
+  Serial.begin(115200);  // Set baud rate according to your device
+  Serial.println("Starting DWIN DGUS Packet Parser...");
+}
+
+void loop() {
+  // Read bytes from Serial
+  while (Serial.available()) {
+    uint8_t byte = Serial.read();
+    parseByte(byte);
+  }
+}
+
+void parseByte(uint8_t byte) {
+  // Add byte to buffer
+  if (bufferIndex < BUFFER_SIZE) {
+    buffer[bufferIndex++] = byte;
+  } else {
+    // Buffer overflow, reset buffer
+    bufferIndex = 0;
+  }
+
+  // Try to parse packets from the buffer
+  while (bufferIndex >= 4) {  // Minimum packet size is 4 bytes
+    if (isValidHeader(buffer)) {
+      uint16_t length = ((uint16_t)buffer[2] << 8) | buffer[3];
+      uint16_t packetSize = length + 4 + 2;  // Header + Length + Data + Checksum
+
+      if (bufferIndex >= packetSize) {
+        if (validateChecksum(buffer, packetSize)) {
+          parsePacket(buffer, packetSize);
+        } else {
+          Serial.println("Invalid checksum");
+        }
+        removeProcessedBytes(packetSize);
+      } else {
+        // Wait for more data
+        break;
+      }
+    } else {
+      // Invalid header, remove first byte and try again
+      shiftBuffer();
+    }
+  }
+}
+
+bool isValidHeader(uint8_t* buf) {
+  // Valid headers: 0x5A 0xA5, 0x5E 0xA5, 0x5A 0xA7, etc.
+  if ((buf[0] == 0x5A && buf[1] == 0xA5) ||
+      (buf[0] == 0x5E && buf[1] == 0xA5) ||
+      (buf[0] == 0x5A && buf[1] == 0xA7) ||
+      (buf[0] == 0x5E && buf[1] == 0xA7)) {
+    return true;
+  }
+  return false;
+}
+
+bool validateChecksum(uint8_t* buf, uint16_t packetSize) {
+  // Sum all bytes from Length to the last data byte
+  uint16_t sum = 0;
+  for (uint16_t i = 2; i < packetSize - 2; i++) {
+    sum += buf[i];
+  }
+  // Calculate checksum: checksum = 0xFFFF - sum + 1
+  uint16_t calculatedChecksum = 0xFFFF - sum + 1;
+  // Extract checksum from packet
+  uint16_t packetChecksum = ((uint16_t)buf[packetSize - 2] << 8) | buf[packetSize - 1];
+  return calculatedChecksum == packetChecksum;
+}
+
+void parsePacket(uint8_t* buf, uint16_t packetSize) {
+  uint8_t command = buf[4];
+  Serial.print("Command: 0x");
+  Serial.println(command, HEX);
+
+  switch (command) {
+    case 0x82:  // Write variable
+      parseWriteVariable(buf);
+      break;
+    // Add cases for other commands if needed
+    default:
+      Serial.println("Unknown command");
+      break;
+  }
+}
+
+void parseWriteVariable(uint8_t* buf) {
+  uint16_t address = ((uint16_t)buf[5] << 8) | buf[6];
+  uint16_t dataLength = ((uint16_t)buf[7] << 8) | buf[8];  // Number of words
+  Serial.print("Address: 0x");
+  Serial.print(address, HEX);
+  Serial.print(", Data Length: ");
+  Serial.println(dataLength);
+
+  Serial.print("Data: ");
+  for (uint16_t i = 0; i < dataLength * 2; i += 2) {
+    uint16_t data = ((uint16_t)buf[9 + i] << 8) | buf[9 + i + 1];
+    Serial.print("0x");
+    Serial.print(data, HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
+void removeProcessedBytes(uint16_t count) {
+  // Shift remaining bytes to the beginning of the buffer
+  for (uint16_t i = 0; i < bufferIndex - count; i++) {
+    buffer[i] = buffer[i + count];
+  }
+  bufferIndex -= count;
+}
+
+void shiftBuffer() {
+  // Remove the first byte and shift the buffer
+  for (uint16_t i = 0; i < bufferIndex - 1; i++) {
+    buffer[i] = buffer[i + 1];
+  }
+  bufferIndex--;
+}
+```
+
+### How the Code Works
+
+- **Buffering Incoming Data**: The code reads incoming bytes from the serial port and stores them in a buffer.
+- **Packet Detection**: It checks for valid packet headers (`0x5A 0xA5`, `0x5E 0xA5`, etc.).
+- **Packet Assembly**: Once a valid header is detected, it reads the length of the packet and waits until all bytes are received.
+- **Checksum Validation**: It calculates the checksum using the DWIN protocol method and compares it with the checksum in the packet.
+- **Packet Parsing**: If the checksum is valid, it parses the packet based on the command (e.g., `0x82` for write variable).
+- **Data Interpretation**: It extracts the address and data from the packet and prints them out.
+
+### Checksum Calculation Details
+
+- **Sum Calculation**: Adds all bytes from the **Length** field up to the last byte of the **Data** field.
+- **Checksum Formula**: `Checksum = 0xFFFF - Sum + 1`
+- **Verification**: The calculated checksum is compared with the checksum provided at the end of the packet.
+
+### Example Output
+
+When the parser receives a packet like:
+
+```
+5E A5 09 82 10 41 00 01 00 05 16 54
+```
+
+The output will be:
+
+```
+Command: 0x82
+Address: 0x1041, Data Length: 1
+Data: 0x5
+```
+
+### Using the Code
+
+1. **Connect the Arduino** to the serial output of your coffee machine's UART interface.
+2. **Set the Baud Rate**: Ensure that the baud rate (`115200` in the code) matches the UART settings of your device.
+3. **Upload the Code**: Upload the code to your Arduino board.
+4. **Monitor the Output**: Open the Serial Monitor in the Arduino IDE to see the parsed packets and data.
+
+### Notes
+
+- **Adjust Buffer Size**: If you expect larger packets, increase the `BUFFER_SIZE`.
+- **Command Handling**: Currently, only the `0x82` (write variable) command is implemented. You can add cases for other commands as needed.
+- **Data Interpretation**: The code prints the raw data values. You might need to apply scaling factors or conversions based on how the data represents sensor readings (e.g., temperature).
+
+### Adding Data Interpretation
+
+If you know that certain addresses correspond to specific sensors (e.g., temperature), you can modify the `parseWriteVariable` function to interpret the data accordingly:
+
+```cpp
+void parseWriteVariable(uint8_t* buf) {
+  uint16_t address = ((uint16_t)buf[5] << 8) | buf[6];
+  uint16_t dataLength = ((uint16_t)buf[7] << 8) | buf[8];  // Number of words
+  Serial.print("Address: 0x");
+  Serial.print(address, HEX);
+  Serial.print(", Data Length: ");
+  Serial.println(dataLength);
+
+  Serial.print("Data: ");
+  for (uint16_t i = 0; i < dataLength * 2; i += 2) {
+    uint16_t data = ((uint16_t)buf[9 + i] << 8) | buf[9 + i + 1];
+
+    // Interpret data based on address
+    if (address == 0x1041) {  // Example address for temperature
+      float temperature = data / 10.0;  // Assuming data is in tenths of degrees
+      Serial.print(temperature);
+      Serial.print(" °C ");
+    } else {
+      Serial.print("0x");
+      Serial.print(data, HEX);
+      Serial.print(" ");
+    }
+  }
+  Serial.println();
+}
+```
+
+### Testing the Code with Sample Data
+
+If you want to test the code with the sample data you provided, you can simulate serial input by modifying the `loop` function:
+
+```cpp
+void loop() {
+  // Sample data string
+  const char* sampleData = "5EA5098210410001000516545AA709821041000100058BF5";
+  // Convert hex string to bytes and parse
+  parseHexString(sampleData);
+  // Prevent re-running
+  while (1);
+}
+
+void parseHexString(const char* hexString) {
+  uint8_t len = strlen(hexString);
+  char byteString[3] = {0};
+  for (uint8_t i = 0; i < len; i += 2) {
+    byteString[0] = hexString[i];
+    byteString[1] = hexString[i + 1];
+    uint8_t byte = strtoul(byteString, NULL, 16);
+    parseByte(byte);
+  }
+}
+```
+
+**Note**: This modification is for testing purposes only and assumes the Arduino has enough memory to handle the string.
+
+### Conclusion
+
+The provided code should help you decode the UART packets from your coffee machine's DWIN DGUS screen. By parsing the packets and interpreting the data, you can monitor sensor readings like temperature in real-time.
+
+If you have any questions or need further assistance with modifying the code to suit your specific needs, feel free to ask!
+
+
 Link that might help
 - https://www.dwin-global.com/development-guide/
-- 
+- https://chatgpt.com/share/6747c6b6-f640-8004-90ed-9513ffe290fd
 
