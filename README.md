@@ -199,3 +199,7 @@ In this series of the machine was heating up with times going . I would be expec
 
 5AA509821041000100051654 seems to be a common status message. Maybe a keep alive. 
 
+Link that might help
+- https://www.dwin-global.com/development-guide/
+- 
+
