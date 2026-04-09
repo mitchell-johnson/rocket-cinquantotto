@@ -1,5 +1,5 @@
 """
-Async UART reader for MicroPython on ESP32-S3 (LOLIN S3).
+Async UART reader for MicroPython on ESP32 (LOLIN D32 Pro).
 
 Reads bytes from the hardware UART, feeds them into PacketParser,
 and broadcasts parsed packets to the SSE broker.

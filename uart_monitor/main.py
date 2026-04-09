@@ -3,15 +3,15 @@ main.py -- entry point for the UART web monitor.
 
 Wires together: WiFi -> UART reader -> packet parser -> SSE web server.
 
-Upload the entire uart_monitor/ directory to your LOLIN S3 and this
-will run automatically after boot.py connects to WiFi.
+Upload the entire uart_monitor/ directory to your LOLIN D32 Pro and
+this will run automatically after boot.py connects to WiFi.
 """
 
 try:
     import uasyncio as asyncio
     from machine import UART, Pin
 except ImportError:
-    raise SystemExit("This module must run on MicroPython (ESP32-S3).")
+    raise SystemExit("This module must run on MicroPython (ESP32).")
 
 from .config import (UART_ID, UART_BAUD, UART_TX_PIN, UART_RX_PIN,
                      WEB_PORT, UART_POLL_MS)
